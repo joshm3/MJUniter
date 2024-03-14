@@ -13,14 +13,15 @@ public class UnitedSystem {
 
     }
 
-    public void analyze(){
+    public void analyze(boolean visualize){
+        NeoRepository neo;
+        if (visualize) {
+            neo = new NeoRepository();
+            neo.clearDB();
+            neo.addService("Employee Service");
+            neo.close();
+        }
         return;
-    }
-
-    public void visualize(){
-        NeoRepository neo = new NeoRepository();
-        neo.test();
-        neo.close();
     }
 
     public void build(){

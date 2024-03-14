@@ -40,8 +40,7 @@ public class MJUniter {
 
         //analyze the system and visualize the system dependency graph
         UnitedSystem unitedSystem = new UnitedSystem(services);
-        unitedSystem.analyze();
-        if (visualize) unitedSystem.visualize();
+        unitedSystem.analyze(visualize);
 
         //build the modular monolith
         unitedSystem.build();

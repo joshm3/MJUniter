@@ -47,9 +47,54 @@ public class NeoRepository implements AutoCloseable{
         session.close();
     }
 
+
+    public void addService(String serviceName){
+        boolean success = session.executeWrite(tx -> addServiceTx(tx, serviceName));
+        if (!success) System.out.println("Failed to add service " + serviceName);
+    }
+
+    static boolean addServiceTx(TransactionContext tx, String serviceName) {
+        // Create new Service node with given name, if not exists already
+        tx.run("CREATE (ms:Microservice {name: $serviceName})", Map.of("serviceName", serviceName));
+        return true;
+    }
+
+
+    public void addDependency(String client, String server, String URL){
+        boolean success = session.executeWrite(tx -> addDependencyTx(tx, URL));
+        System.out.printf("User %s added to organization %s.%n", URL);
+    }
+
+    static boolean addDependencyTx(TransactionContext tx, String name) {
+        // Create new Person node with given name, if not exists already
+        tx.run("MERGE (p:Person {name: $name})", Map.of("name", name));
+        return true;
+    }
+
+
+    public void clearDB(){
+        boolean success = session.executeWrite(tx -> clearTx(tx));
+        if(!success) System.out.println("Failed to clear neo4j database");
+    }
+    
+    static boolean clearTx(TransactionContext tx){
+        tx.run("MATCH (n) DETACH DELETE n");
+        //should probably get result here eventually
+        return true;
+    }
+
+
+
+
+
+
+
+
+
+//Nothing after this is necessary to keep
     public void test(){
         boolean success = session.executeWrite(tx -> clearTx(tx));
-        if(!success) System.out.println("Cleared neo4j database");
+        if(!success) System.out.println("Failed to clear neo4j database");
 
         for (int i=0; i<100; i++) {
             String name = String.format("Thor%d", i);
@@ -63,14 +108,7 @@ public class NeoRepository implements AutoCloseable{
         }
     }
 
-    static boolean clearTx(TransactionContext tx){
-        tx.run("""
-            match (a) -[r] -> () delete a, r
-            match (a) delete a
-                """);
-        //should probably get result here eventually
-        return true;
-    }
+    
 
 
     static String employPersonTx(TransactionContext tx, String name) {
