@@ -21,6 +21,7 @@ public class Microservice {
     public void analyze(){
         File curFile = new File(path);
         recursiveSearch(curFile);
+        //do we have to close files in java
     }
 
     private void recursiveSearch(File curFile){
@@ -34,6 +35,8 @@ public class Microservice {
                 analyzeJavaFile(curFile);
             }
         }
+
+        //close files in here
     }
 
     //analyze a java file to see if it contains a controller and or client

@@ -64,8 +64,8 @@ public class NeoRepository implements AutoCloseable{
 
     static boolean addMicroserviceTx(TransactionContext tx, String serviceName) {
         // Create new Service node with given name, if not exists already
-        tx.run("CREATE (ms:Microservice {name:$serviceName,service:$serviceName})", Map.of("serviceName", serviceName));
-        return true;
+        var result = tx.run("CREATE (ms:Microservice {name:$serviceName,service:$serviceName})", Map.of("serviceName", serviceName));
+        return result!=null;
     }
 
 
@@ -80,11 +80,11 @@ public class NeoRepository implements AutoCloseable{
         Map<String, Object> params = new HashMap<>();
         params.put("serviceName", serviceName);
         params.put("controllerName", controllerName);
-        tx.run("""
+        var result = tx.run("""
             MATCH (ms:Microservice {name: $serviceName})
             CREATE (ms)-[:CONTAINS]->(con:Controller {name:$controllerName, service:$serviceName})
                     """, params);
-        return true;
+        return result!=null;
     }
 
 
@@ -92,7 +92,8 @@ public class NeoRepository implements AutoCloseable{
         - this will contain the microservice label, and controller name
     */
     public void addEndpointFromController(String uri, String serviceName, String controllerName){
-        boolean success = session.executeWrite(tx -> addEndpointFromControllerTx(tx, uri, serviceName, controllerName));
+        String standardUri = uri.replaceAll("{*}", "{param}");
+        boolean success = session.executeWrite(tx -> addEndpointFromControllerTx(tx, standardUri, serviceName, controllerName));
         if (!success) System.out.println("Failed to add dependency");
     }
 
@@ -102,7 +103,7 @@ public class NeoRepository implements AutoCloseable{
         params.put("uri", uri);
         params.put("serviceName", serviceName);
         params.put("controllerName", controllerName);
-        tx.run("""
+        var result = tx.run("""
             MERGE (ep:EndPoint {uriName:$uri})
             SET ep.service = $serviceName
             WITH ep
@@ -110,7 +111,7 @@ public class NeoRepository implements AutoCloseable{
             CREATE (con)-[:SERVER_FOR]->(ep)
             return ep
                     """, params);
-        return true;
+        return result!=null;
     }
 
 
@@ -118,7 +119,8 @@ public class NeoRepository implements AutoCloseable{
         - this will have the client name
     */
     public void addEndpointFromClient(String uri, String clientName, String clientService){
-        boolean success = session.executeWrite(tx -> addEndpointFromClientTx(tx, uri, clientName, clientService));
+        String standardUri = uri.replaceAll("{*}", "{param}");
+        boolean success = session.executeWrite(tx -> addEndpointFromClientTx(tx, standardUri, clientName, clientService));
         if (!success) System.out.println("Failed to add dependency");
     }
 
@@ -128,13 +130,13 @@ public class NeoRepository implements AutoCloseable{
         params.put("uri", uri);
         params.put("clientName", clientName);
         params.put("clientService", clientService);
-        tx.run("""
+        var result = tx.run("""
             MERGE (ep:EndPoint {uriName: $uri})
             WITH ep
             MATCH (client:Client {name:$clientName, service:$clientService})
             CREATE (client)-[:CLIENT_FOR]->(ep)
                     """, params);
-        return true;
+        return result!=null;
     }
 
 
@@ -149,11 +151,11 @@ public class NeoRepository implements AutoCloseable{
         Map<String, Object> params = new HashMap<>();
         params.put("serviceName", serviceName);
         params.put("clientName", clientName);
-        tx.run("""
+        var result = tx.run("""
             MATCH (ms:Microservice {name:$serviceName})
             CREATE (ms)-[:CONTAINS]->(client:Client {name:$clientName, service:$serviceName})
                     """, params);
-        return true;
+        return result!=null;
     }
 
 
@@ -164,9 +166,9 @@ public class NeoRepository implements AutoCloseable{
     }
     
     static boolean clearTx(TransactionContext tx){
-        tx.run("MATCH (n) DETACH DELETE n");
+        var result = tx.run("MATCH (n) DETACH DELETE n");
         //should probably get result here eventually
-        return true;
+        return result!=null;
     }
 
 

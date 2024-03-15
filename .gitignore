@@ -1,0 +1,4 @@
+#gitignore file
+mjuniter/target/
+mjuniter/dependency*
+.github/

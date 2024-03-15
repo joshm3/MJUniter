@@ -19,13 +19,11 @@ public class MJUniter {
         /*get mjuniter.properties to configure mjuniter*/
         String path;
         List<String> serviceNames = new ArrayList<String>();
-        boolean visualize;
         Properties prop = new Properties();
         try(InputStream fis = MJUniter.class.getClassLoader().getResourceAsStream("mjuniter.properties");) {
             prop.load(fis);
             path = prop.getProperty("path");
             serviceNames = Arrays.asList(prop.getProperty("microserviceNames").split(","));
-            visualize = prop.getProperty("visualize").equals("true");
         }
         catch(Exception e) {
             System.out.println("Error loading mjuniter.properties");
@@ -45,7 +43,7 @@ public class MJUniter {
             services.add(newService);
         }
 
-        //analyze the system and visualize the system dependency graph
+        //build the modular monolith
         UnitedSystem unitedSystem = new UnitedSystem(services);
         unitedSystem.build();
 
