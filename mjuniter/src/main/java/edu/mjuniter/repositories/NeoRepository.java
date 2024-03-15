@@ -1,5 +1,6 @@
 package edu.mjuniter.repositories;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import java.io.InputStream;
@@ -16,6 +17,13 @@ import org.neo4j.driver.Session;
 public class NeoRepository implements AutoCloseable{
 
     private Session session;
+    private static NeoRepository instance = null;
+
+    public static NeoRepository inst() {
+        if (instance == null)
+            instance = new NeoRepository();
+        return instance;
+    }
 
     public NeoRepository(){
         //load properties
@@ -48,30 +56,108 @@ public class NeoRepository implements AutoCloseable{
     }
 
 
-    public void addService(String serviceName){
-        boolean success = session.executeWrite(tx -> addServiceTx(tx, serviceName));
+    //CREATEs a microservice node, the primary building block of the microservice system
+    public void addMicroservice(String serviceName){
+        boolean success = session.executeWrite(tx -> addMicroserviceTx(tx, serviceName));
         if (!success) System.out.println("Failed to add service " + serviceName);
     }
 
-    static boolean addServiceTx(TransactionContext tx, String serviceName) {
+    static boolean addMicroserviceTx(TransactionContext tx, String serviceName) {
         // Create new Service node with given name, if not exists already
-        tx.run("CREATE (ms:Microservice {name: $serviceName})", Map.of("serviceName", serviceName));
+        tx.run("CREATE (ms:Microservice {name:$serviceName,service:$serviceName})", Map.of("serviceName", serviceName));
         return true;
     }
 
 
-    public void addDependency(String client, String server, String URL){
-        boolean success = session.executeWrite(tx -> addDependencyTx(tx, URL));
-        System.out.printf("User %s added to organization %s.%n", URL);
+    //CREATes a controller, must belong to and come after a microservice node
+    public void addController(String serviceName, String controllerName){
+        boolean success = session.executeWrite(tx -> addControllerTx(tx, serviceName, controllerName));
+        if (!success) System.out.println("Failed to add dependency");
     }
 
-    static boolean addDependencyTx(TransactionContext tx, String name) {
+    static boolean addControllerTx(TransactionContext tx, String serviceName, String controllerName) {
         // Create new Person node with given name, if not exists already
-        tx.run("MERGE (p:Person {name: $name})", Map.of("name", name));
+        Map<String, Object> params = new HashMap<>();
+        params.put("serviceName", serviceName);
+        params.put("controllerName", controllerName);
+        tx.run("""
+            MATCH (ms:Microservice {name: $serviceName})
+            CREATE (ms)-[:CONTAINS]->(con:Controller {name:$controllerName, service:$serviceName})
+                    """, params);
         return true;
     }
 
 
+    /**MERGEs an endpoint, called from the controller's SERVER_FOR relationship 
+        - this will contain the microservice label, and controller name
+    */
+    public void addEndpointFromController(String uri, String serviceName, String controllerName){
+        boolean success = session.executeWrite(tx -> addEndpointFromControllerTx(tx, uri, serviceName, controllerName));
+        if (!success) System.out.println("Failed to add dependency");
+    }
+
+    static boolean addEndpointFromControllerTx(TransactionContext tx, String uri, String serviceName, String controllerName) {
+        // Create new Person node with given name, if not exists already
+        Map<String, Object> params = new HashMap<>();
+        params.put("uri", uri);
+        params.put("serviceName", serviceName);
+        params.put("controllerName", controllerName);
+        tx.run("""
+            MERGE (ep:EndPoint {uriName:$uri})
+            SET ep.service = $serviceName
+            WITH ep
+            MATCH (con:Controller {name:$controllerName, service:$serviceName})
+            CREATE (con)-[:SERVER_FOR]->(ep)
+            return ep
+                    """, params);
+        return true;
+    }
+
+
+    /**MERGEs an endpoint, called from the client's CLIENT_FOR relationship 
+        - this will have the client name
+    */
+    public void addEndpointFromClient(String uri, String clientName, String clientService){
+        boolean success = session.executeWrite(tx -> addEndpointFromClientTx(tx, uri, clientName, clientService));
+        if (!success) System.out.println("Failed to add dependency");
+    }
+
+    static boolean addEndpointFromClientTx(TransactionContext tx, String uri, String clientName, String clientService) {
+        // Create new Person node with given name, if not exists already
+        Map<String, Object> params = new HashMap<>();
+        params.put("uri", uri);
+        params.put("clientName", clientName);
+        params.put("clientService", clientService);
+        tx.run("""
+            MERGE (ep:EndPoint {uriName: $uri})
+            WITH ep
+            MATCH (client:Client {name:$clientName, service:$clientService})
+            CREATE (client)-[:CLIENT_FOR]->(ep)
+                    """, params);
+        return true;
+    }
+
+
+    //CREATEs a client
+    public void addClient(String serviceName, String clientName){
+        boolean success = session.executeWrite(tx -> addClientTx(tx, serviceName, clientName));
+        if (!success) System.out.println("Failed to add dependency");
+    }
+
+    static boolean addClientTx(TransactionContext tx, String serviceName, String clientName) {
+        // Create new Person node with given name, if not exists already
+        Map<String, Object> params = new HashMap<>();
+        params.put("serviceName", serviceName);
+        params.put("clientName", clientName);
+        tx.run("""
+            MATCH (ms:Microservice {name:$serviceName})
+            CREATE (ms)-[:CONTAINS]->(client:Client {name:$clientName, service:$serviceName})
+                    """, params);
+        return true;
+    }
+
+
+    //erases all nodes and relationships from the database
     public void clearDB(){
         boolean success = session.executeWrite(tx -> clearTx(tx));
         if(!success) System.out.println("Failed to clear neo4j database");
@@ -91,71 +177,31 @@ public class NeoRepository implements AutoCloseable{
 
 
 
-//Nothing after this is necessary to keep
+
+
+
+
+
+
+    //Nothing after this is necessary to keep
     public void test(){
-        boolean success = session.executeWrite(tx -> clearTx(tx));
-        if(!success) System.out.println("Failed to clear neo4j database");
+        NeoRepository neo = NeoRepository.inst();
 
-        for (int i=0; i<100; i++) {
-            String name = String.format("Thor%d", i);
+        neo.addMicroservice("department-service");
+        neo.addClient("department-service", "EmployeeClient");
+        neo.addEndpointFromClient("/employee/department/{departmentId}", "EmployeeClient", "department-service");
+        neo.addController("department-service", "DepartmentController");
+        neo.addEndpointFromController("/department", "department-service", "DepartmentController");
+        neo.addEndpointFromController("/department/{id}", "department-service", "DepartmentController");
+        neo.addEndpointFromController("/department/with-employees", "department-service", "DepartmentController");
 
-            try {
-                String orgId = session.executeWrite(tx -> employPersonTx(tx, name));
-                System.out.printf("User %s added to organization %s.%n", name, orgId);
-            } catch (Exception e) {
-                System.out.println(e.getMessage());
-            }
-        }
+        neo.addMicroservice("employee-service");
+        neo.addController("employee-service", "EmployeeController");
+        neo.addEndpointFromController("/employee", "employee-service", "EmployeeController");
+        neo.addEndpointFromController("/employee/id", "employee-service", "EmployeeController");
+        neo.addEndpointFromController("/employee/department/{departmentId}", "employee-service", "EmployeeController");
     }
 
-    
-
-
-    static String employPersonTx(TransactionContext tx, String name) {
-        final int employeeThreshold = 10;
-
-        // Create new Person node with given name, if not exists already
-        tx.run("MERGE (p:Person {name: $name})", Map.of("name", name));
-
-        // Obtain most recent organization ID and the number of people linked to it
-        var result = tx.run("""
-            MATCH (o:Organization)
-            RETURN o.id AS id, COUNT{(p:Person)-[r:WORKS_FOR]->(o)} AS employeesN
-            ORDER BY o.createdDate DESC
-            LIMIT 1
-            """);
-
-        Record org = null;
-        String orgId = null;
-        int employeesN = 0;
-        try {
-            org = result.single();
-            orgId = org.get("id").asString();
-            employeesN = org.get("employeesN").asInt();
-        } catch (NoSuchRecordException e) {
-            // The query is guaranteed to return <= 1 results, so if.single() throws, it means there's none.
-            // If no organization exists, create one and add Person to it
-            orgId = createOrganization(tx);
-            System.out.printf("No orgs available, created %s.%n", orgId);
-        }
-
-        // If org does not have too many employees, add this Person to it
-        if (employeesN < employeeThreshold) {
-            addPersonToOrganization(tx, name, orgId);
-            // If the above throws, the transaction will roll back
-            // -> not even Person is created!
-
-        // Otherwise, create a new Organization and link Person to it
-        } else {
-            orgId = createOrganization(tx);
-            System.out.printf("Latest org is full, created %s.%n", orgId);
-            addPersonToOrganization(tx, name, orgId);
-            // If any of the above throws, the transaction will roll back
-            // -> not even Person is created!
-        }
-
-        return orgId;  // Organization ID to which the new Person ends up in
-    }
 
     static String createOrganization(TransactionContext tx) {
         var result = tx.run("""
@@ -167,12 +213,4 @@ public class NeoRepository implements AutoCloseable{
         return orgId;
     }
 
-    static void addPersonToOrganization(TransactionContext tx, String personName, String orgId) {
-        tx.run("""
-            MATCH (o:Organization {id: $orgId})
-            MATCH (p:Person {name: $name})
-            MERGE (p)-[:WORKS_FOR]->(o)
-            """, Map.of("orgId", orgId, "name", personName)
-        );
-    }
 }

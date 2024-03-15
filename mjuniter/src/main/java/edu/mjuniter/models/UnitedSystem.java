@@ -14,13 +14,8 @@ public class UnitedSystem {
     }
 
     public void analyze(boolean visualize){
-        NeoRepository neo;
-        if (visualize) {
-            neo = new NeoRepository();
-            neo.clearDB();
-            neo.addService("Employee Service");
-            neo.close();
-        }
+        
+        
         return;
     }
 

@@ -8,6 +8,7 @@ import java.util.Properties;
 
 import edu.mjuniter.models.Microservice;
 import edu.mjuniter.models.UnitedSystem;
+import edu.mjuniter.repositories.NeoRepository;
 
 public class MJUniter {
 
@@ -15,6 +16,7 @@ public class MJUniter {
 
         System.out.println("Starting MJUniter");
 
+        /*get mjuniter.properties to configure mjuniter*/
         String path;
         List<String> serviceNames = new ArrayList<String>();
         boolean visualize;
@@ -30,9 +32,14 @@ public class MJUniter {
             return;
         }
 
-        //analyze each microservice
+        //start connection to the neo4j repository and clear it
+        NeoRepository neo = NeoRepository.inst();
+        neo.clearDB();
+
+        /*analyze each microservice while neo4j makes connects the 
+            endpoints and creates the system dependency graph*/
         List<Microservice> services = new ArrayList<Microservice>();
-        for (String serviceName : serviceNames){
+        for (String serviceName:serviceNames){
             Microservice newService = new Microservice(serviceName, path);
             newService.analyze();
             services.add(newService);
@@ -40,9 +47,9 @@ public class MJUniter {
 
         //analyze the system and visualize the system dependency graph
         UnitedSystem unitedSystem = new UnitedSystem(services);
-        unitedSystem.analyze(visualize);
-
-        //build the modular monolith
         unitedSystem.build();
+
+        //close the neo4j connection
+        neo.close();
     }
 }
