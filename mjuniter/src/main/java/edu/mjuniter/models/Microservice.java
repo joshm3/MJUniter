@@ -1,11 +1,16 @@
 package edu.mjuniter.models;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import edu.mjuniter.repositories.NeoRepository;
+import org.apache.commons.lang3.tuple.Pair;
 import spoon.Launcher;
 import spoon.reflect.CtModel;
+import spoon.reflect.code.CtExpression;
 import spoon.reflect.declaration.CtAnnotation;
 import spoon.reflect.declaration.CtClass;
 import spoon.reflect.declaration.CtElement;
@@ -44,6 +49,8 @@ public class Microservice {
             System.out.println("Controller class: " + ctClass.getQualifiedName());
 
             //now look for the endpoint urls
+            var baseUri = AnnotationExtractor.getParams(ctClass, "org.springframework.web.bind.annotation.RequestMapping");
+            System.out.println(baseUri);
         }
 
         //look for all clients
@@ -56,6 +63,34 @@ public class Microservice {
         }
 
         
+    }
+
+    static class AnnotationExtractor{
+        public static String get(CtElement e, String annClassName) {
+            for (CtAnnotation<?> annotation : e.getAnnotations()) {
+                if (annotation.getAnnotationType().getQualifiedName()
+                        .equals(annClassName)) {
+                    String val = annotation.getValue("value").toString();
+                    return val;
+                }
+            } //for
+            return null;
+        }
+        public static Map<String, String> getParams(CtElement e, String annClassName) {
+            for (CtAnnotation<?> annotation : e.getAnnotations()) {
+                if (annotation.getAnnotationType().getQualifiedName()
+                        .equals(annClassName)) {
+                    Map<String, String> res = new HashMap<>();
+                    Map<String, CtExpression> map =  annotation.getAllValues();
+                    System.out.println("map is " + map);
+                    for (Map.Entry<String, CtExpression> entry : map.entrySet())
+                        if (entry.getValue() != null)
+                            res.put(entry.getKey(), entry.getValue().toString());
+                    return res;
+                }
+            } //for
+            return null;
+        }
     }
 
     // Custom filter to search for classes with either @RestController or @Controller annotation
