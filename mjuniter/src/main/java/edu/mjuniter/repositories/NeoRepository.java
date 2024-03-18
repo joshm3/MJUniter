@@ -8,10 +8,8 @@ import java.util.Properties;
 
 import org.neo4j.driver.AuthTokens;
 import org.neo4j.driver.GraphDatabase;
-import org.neo4j.driver.Record;
 import org.neo4j.driver.SessionConfig;
 import org.neo4j.driver.TransactionContext;
-import org.neo4j.driver.exceptions.NoSuchRecordException;
 import org.neo4j.driver.Session;
 
 public class NeoRepository implements AutoCloseable{

@@ -14,7 +14,7 @@ public class MJUniter {
 
     public static void main(String... args) {
 
-        System.out.println("Starting MJUniter");
+        System.out.println("Starting MJUniter\n");
 
         /*get mjuniter.properties to configure mjuniter*/
         String path;
@@ -22,7 +22,7 @@ public class MJUniter {
         Properties prop = new Properties();
         try(InputStream fis = MJUniter.class.getClassLoader().getResourceAsStream("mjuniter.properties");) {
             prop.load(fis);
-            path = prop.getProperty("path");
+            path = prop.getProperty("path").replace('\\', '/');
             serviceNames = Arrays.asList(prop.getProperty("microserviceNames").split(","));
         }
         catch(Exception e) {
@@ -31,8 +31,8 @@ public class MJUniter {
         }
 
         //start connection to the neo4j repository and clear it
-        NeoRepository neo = NeoRepository.inst();
-        neo.clearDB();
+        //NeoRepository neo = NeoRepository.inst();
+        //neo.clearDB();
 
         /*analyze each microservice while neo4j makes connects the 
             endpoints and creates the system dependency graph*/
@@ -48,6 +48,6 @@ public class MJUniter {
         unitedSystem.build();
 
         //close the neo4j connection
-        neo.close();
+        //neo.close();
     }
 }

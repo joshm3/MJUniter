@@ -1,60 +1,162 @@
 package edu.mjuniter.models;
 
 import java.io.File;
+import java.util.List;
 
 import edu.mjuniter.repositories.NeoRepository;
+import spoon.Launcher;
+import spoon.reflect.CtModel;
+import spoon.reflect.declaration.CtAnnotation;
+import spoon.reflect.declaration.CtClass;
+import spoon.reflect.declaration.CtElement;
+import spoon.reflect.declaration.CtMethod;
+import spoon.reflect.visitor.filter.AnnotationFilter;
+import spoon.reflect.visitor.Filter;
+import spoon.reflect.declaration.CtInterface;
+
 
 public class Microservice {
     String name;
     String path;
     NeoRepository neo;
     
-    public Microservice(String name, String path){
+    public Microservice(String name, String basePath){
         this.name = name;
-        this.path = path;
-        neo = NeoRepository.inst();
+        this.path = basePath + "/" + name; //not that sure about this
+        //neo = NeoRepository.inst();
 
-        neo.addMicroservice(name);
+        //neo.addMicroservice(name);
     }
 
     //must recursively search through the microservice's /src/main/java directory looking for Controllers and Clients
     public void analyze(){
-        File curFile = new File(path);
-        recursiveSearch(curFile);
-        //do we have to close files in java
+        System.out.println("Beginning analysis of " + name);
+        String javaPath = path + "/src/main/java";
+
+        Launcher launcher = new Launcher();
+        launcher.addInputResource(javaPath);
+        CtModel model = launcher.buildModel();
+
+        //look for all controllers
+        for (CtElement ctElement : model.getElements(new ControllerFilter())) {
+            //ControllerAnnotationFilter only matches instances of CtClass currently
+            CtClass<?> ctClass = (CtClass<?>)ctElement;
+            System.out.println("Controller class: " + ctClass.getQualifiedName());
+
+            //now look for the endpoint urls
+        }
+
+        //look for all clients
+        for (CtElement ctElement : model.getElements(new ClientFilter())) {
+            //Client filter only matches instances of CtInterface
+            CtInterface<?> ctInter = (CtInterface<?>)ctElement;
+            System.out.println("Client interface: " + ctInter.getQualifiedName());
+
+            //now look for the endpoint
+        }
+
+        
     }
 
-    private void recursiveSearch(File curFile){
-        if (curFile.isDirectory()) {
-            File[] subFiles = curFile.listFiles();
-            for (File subFile : subFiles) {
-                recursiveSearch(subFile);
+    // Custom filter to search for classes with either @RestController or @Controller annotation
+    static class ControllerFilter implements Filter<CtElement> {
+        @Override
+        public boolean matches(CtElement element) {
+            if (element instanceof CtClass) {
+                CtClass<?> ctClass = (CtClass<?>) element;
+                return ctClass.getAnnotation(org.springframework.web.bind.annotation.RestController.class) != null ||
+                    ctClass.getAnnotation(org.springframework.stereotype.Controller.class) != null;
             }
-        } else {
-            if (curFile.getName().endsWith(".java")) {
-                analyzeJavaFile(curFile);
+            return false;
+        }
+    }
+
+    // Custom filter to search for classes with either @RestController or @Controller annotation
+    static class ClientFilter implements Filter<CtElement> {
+        @Override
+        public boolean matches(CtElement element) {
+            if (element instanceof CtInterface) {
+                CtInterface<?> inter = (CtInterface<?>) element;
+                return inter.getAnnotation(org.springframework.web.service.annotation.HttpExchange.class) != null;
             }
-        }
-
-        //close files in here
-    }
-
-    //analyze a java file to see if it contains a controller and or client
-    private void analyzeJavaFile(File javaFile){
-        boolean controller = false;
-        boolean client = false;
-
-        //open it up in spoon and check for controller or client
-
-
-
-        if (controller){
-            //create a controller object? - let it analyze it automatically
-
-        }
-        if (client){
-            //create a client object? - let it analyze it automatically
-
+            return false;
         }
     }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// File curFile = new File(javaPath);
+        // if (curFile.exists()) {
+        //     recursiveSearch(curFile);
+        // }
+        // else {
+        //     System.out.println("ERROR: file at path " + curFile.getAbsolutePath() + " does not exist");
+        // }
+        // System.out.println();
+
+
+    // private void recursiveSearch(File curFile){
+    //     if (curFile.isDirectory()) {
+    //         File[] subFiles = curFile.listFiles();
+    //         for (File subFile : subFiles) {
+    //             recursiveSearch(subFile);
+    //         }
+    //     } else {
+    //         if (curFile.getName().endsWith(".java")) {
+    //             analyzeJavaFile(curFile);
+    //         }
+    //     }
+
+    //     //close files in here
+    // }
+
+    // //analyze a java file to see if it contains a controller and or client
+    // private void analyzeJavaFile(File javaFile){
+
+    //     System.out.print(javaFile.getName() + " contains: ");
+
+    //     boolean controller = false;
+    //     boolean client = false;
+
+    //     //open it up in spoon and check for controller or client
+    //     // - it would be nice if they were in sub-packages named "controllers" and "clients" but this is uncommon
+    //     // Launcher launcher = new Launcher();
+    //     // launcher.addInputResource(javaFile.getAbsolutePath()); // Replace with your source code path
+    //     // launcher.buildModel();
+    //     // Model model = launcher.getModel();
+
+    //     //spring controllers have @controller or @restcontroller annotations
+
+
+    //     //spring clients have RestClient (could be feign client), WebClient, RestTemplate, or HTTP Interface, 
+
+
+
+    //     if (controller){
+    //         System.out.println("controller");
+    //         //create a controller object? - let it analyze it automatically
+
+    //     }
+    //     if (client){
+    //         System.out.println("client");
+    //         //create a client object? - let it analyze it automatically
+
+    //     } else {
+    //         System.out.println("no controllers or clients");
+    //     }
+    // }
 }
