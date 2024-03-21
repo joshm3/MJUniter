@@ -75,10 +75,9 @@ public class Microservice {
         CtRootPackage rootPack = (CtRootPackage)model.getRootPackage();
         CtPackage modPack = factory.createPackage().setSimpleName("modules");
         rootPack.addPackage(modPack);
-        
+
         CtClass<?> mainClass = factory.createClass(modPack, "Application");
         launcher.setSourceOutputDirectory(path + "/test");
-        nauncher.prettyprint();
 
         //look for all controllers
         for (CtElement ctElement : model.getElements(new ControllerFilter())) {
