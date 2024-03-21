@@ -1,6 +1,5 @@
 package edu.mjuniter.models;
 
-// import spoon.Launcher;
-import spoon.reflect.declaration.CtMethod;
+// import spoon.reflect.declaration.CtElement;
 
-public record Endpoint (String url, CtMethod<?> method, boolean internal){}
+public record Endpoint (String uri, boolean internal){}

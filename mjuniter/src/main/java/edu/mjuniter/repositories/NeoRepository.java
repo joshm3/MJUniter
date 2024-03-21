@@ -90,7 +90,7 @@ public class NeoRepository implements AutoCloseable{
         - this will contain the microservice label, and controller name
     */
     public void addEndpointFromController(String uri, String serviceName, String controllerName){
-        String standardUri = uri.replaceAll("{*}", "{param}");
+        String standardUri = uri.replaceAll("\\{.*?\\}", "{param}");
         boolean success = session.executeWrite(tx -> addEndpointFromControllerTx(tx, standardUri, serviceName, controllerName));
         if (!success) System.out.println("Failed to add dependency");
     }
@@ -106,7 +106,7 @@ public class NeoRepository implements AutoCloseable{
             SET ep.service = $serviceName
             WITH ep
             MATCH (con:Controller {name:$controllerName, service:$serviceName})
-            CREATE (con)-[:SERVER_FOR]->(ep)
+            MERGE (con)-[:SERVER_FOR]->(ep)
             return ep
                     """, params);
         return result!=null;
@@ -117,7 +117,7 @@ public class NeoRepository implements AutoCloseable{
         - this will have the client name
     */
     public void addEndpointFromClient(String uri, String clientName, String clientService){
-        String standardUri = uri.replaceAll("{*}", "{param}");
+        String standardUri = uri.replaceAll("\\{.*?\\}", "{param}");
         boolean success = session.executeWrite(tx -> addEndpointFromClientTx(tx, standardUri, clientName, clientService));
         if (!success) System.out.println("Failed to add dependency");
     }
@@ -132,7 +132,7 @@ public class NeoRepository implements AutoCloseable{
             MERGE (ep:EndPoint {uriName: $uri})
             WITH ep
             MATCH (client:Client {name:$clientName, service:$clientService})
-            CREATE (client)-[:CLIENT_FOR]->(ep)
+            MERGE (client)-[:CLIENT_FOR]->(ep)
                     """, params);
         return result!=null;
     }
