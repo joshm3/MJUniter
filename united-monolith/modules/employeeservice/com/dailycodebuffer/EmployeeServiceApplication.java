@@ -1,3 +1,8 @@
-package modules.employeeservice.com.dailycodebuffer;import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+package modules.employeeservice.com.dailycodebuffer;
+@org.springframework.boot.autoconfigure.SpringBootApplication
+@org.springframework.cloud.client.discovery.EnableDiscoveryClient
+public class EmployeeServiceApplication {
+    public static void main(java.lang.String[] args) {
+        org.springframework.boot.SpringApplication.run(com.dailycodebuffer.EmployeeServiceApplication.class, args);
+    }
+}

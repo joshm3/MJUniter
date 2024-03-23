@@ -7,6 +7,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.core.annotation.AnnotationFilter;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -44,33 +45,24 @@ public class UnitedSystem {
         this.services = services;
         this.path = path;
         launcher = new Launcher();
+        launcher.addInputResource("./../temp");
         model = launcher.buildModel();
         factory = launcher.getFactory();
     }
 
     //builds the modular monolith
     public void build(){
+        CtPackage modPack = model.getRootPackage().getPackage("modules");
 
-        //setup modular package structure
-        CtRootPackage rootPack = (CtRootPackage)model.getRootPackage();
-        CtPackage modPack = factory.createPackage().setSimpleName("modules");
-        rootPack.addPackage(modPack);
-
-        //add each service to a module package
-        for (Microservice curService : services){
-            System.out.println(curService.getName());
-            CtPackage servPack = factory.createPackage().setSimpleName(curService.getName().replace("-", ""));
-            modPack.addPackage(servPack);
-            for (CtPackage curPack : curService.getBasePackages()){
-                curPack.delete();             
-                servPack.addPackage(curPack);
-            }
-        }
-        
         //need to create a new main class to start everything up
-        //buildMainClass(modPack);
+        buildMainClass(modPack);
 
         //need to create api functions for all of the internally used functions
+        for (Microservice service : services){
+            CtPackage servPack = modPack.getPackage(service.getPackName());
+            removeMainClass(servPack);
+            buildApiClass(modPack, service); //************************* */
+        }
 
         //for all of the endpoints that are internally used, 
         //  create a public method in that module api class with the same logic as the endpoint
@@ -85,6 +77,41 @@ public class UnitedSystem {
         //need to prettyPrint this thing out
         launcher.setSourceOutputDirectory(path + "/../united-monolith");
         launcher.prettyprint();
+    }
+
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    //use an annotation filter to find the class with @SpringBootApplication
+    private void removeMainClass(CtPackage servPack){
+        //AnnotationFilter filter = new AnnotationFilter//
+    }
+
+    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! finish
+    private void buildApiClass(CtPackage servPack, Microservice service){
+        CtClass<?> apiClass = factory.createClass(servPack, "Api");
+
+        // CtTypeReference<SpringBootApplication> sbaRef = launcher.getFactory().Type().createReference(org.springframework.boot.autoconfigure.SpringBootApplication.class);
+        // CtAnnotation<?> sbaAnn = factory.createAnnotation(sbaRef);
+        // mainClass.addAnnotation(sbaAnn);
+
+        // CtTypeReference<EnableDiscoveryClient> edcRef = launcher.getFactory().Type().createReference(org.springframework.cloud.client.discovery.EnableDiscoveryClient.class);
+        // CtAnnotation<?> edcAnn = factory.createAnnotation(edcRef);
+        // mainClass.addAnnotation(edcAnn);
+
+        // CtMethod<?> mainMeth = launcher.getFactory().createMethod();
+        // mainClass.addMethod(mainMeth);
+        // mainMeth.setSimpleName("main");
+        // mainMeth.setType(factory.Type().voidPrimitiveType());
+        
+        // mainMeth.addModifier(ModifierKind.PUBLIC);
+        // mainMeth.addModifier(ModifierKind.STATIC);
+        // CtParameter<String[]> args = factory.createParameter().setType(factory.Type().createArrayReference(factory.Type().STRING));
+        // args.setSimpleName("args");
+        // mainMeth.addParameter(args);
+        // //setname??
+
+        // CtBlock<Void> body = factory.createBlock();
+        // body.addStatement(factory.createCodeSnippetStatement("SpringApplication.run(DepartmentServiceApplication.class, args)"));
+        // mainMeth.setBody(body);
     }
 
 
@@ -103,12 +130,13 @@ public class UnitedSystem {
         mainClass.addMethod(mainMeth);
         mainMeth.setSimpleName("main");
         mainMeth.setType(factory.Type().voidPrimitiveType());
+        
         mainMeth.addModifier(ModifierKind.PUBLIC);
         mainMeth.addModifier(ModifierKind.STATIC);
-        List<CtParameter<?>> params = new ArrayList<CtParameter<?>>();
-        params.add(factory.createParameter().setType(factory.Type().createArrayReference(factory.Type().STRING)));
+        CtParameter<String[]> args = factory.createParameter().setType(factory.Type().createArrayReference(factory.Type().STRING));
+        args.setSimpleName("args");
+        mainMeth.addParameter(args);
         //setname??
-        mainMeth.setParameters(params);
 
         CtBlock<Void> body = factory.createBlock();
         body.addStatement(factory.createCodeSnippetStatement("SpringApplication.run(DepartmentServiceApplication.class, args)"));

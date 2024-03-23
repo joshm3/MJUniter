@@ -37,6 +37,7 @@ import spoon.reflect.declaration.CtInterface;
 
 public class Microservice {
     private String name;
+    private String packName;
     private String path;
     private NeoRepository neo;
     private Launcher launcher;
@@ -45,6 +46,7 @@ public class Microservice {
     public Microservice(String name, String basePath){
         this.name = name;
         this.path = basePath + "/" + name;
+        packName = name.replace("-", "");
 
         neo = NeoRepository.inst();
         neo.addMicroservice(name);
@@ -60,6 +62,10 @@ public class Microservice {
         return name;
     }
 
+    public String getPackName(){
+        return packName;
+    }
+
     //must recursively search through the microservice's /src/main/java directory looking for Controllers and Clients
     public void analyze(){
         System.out.println("Beginning analysis of " + name);
@@ -73,12 +79,19 @@ public class Microservice {
 
         Factory factory = launcher.getFactory();
         CtRootPackage rootPack = (CtRootPackage)model.getRootPackage();
+        Set<CtPackage> basePacks = rootPack.getPackages();
         CtPackage modPack = factory.createPackage().setSimpleName("modules");
         rootPack.addPackage(modPack);
-
-        CtClass<?> mainClass = factory.createClass(modPack, "Application");
-        launcher.setSourceOutputDirectory(path + "/test");
-
+        CtPackage servPack = factory.createPackage().setSimpleName(packName);
+        modPack.addPackage(servPack);
+        for (CtPackage pack : basePacks){
+            servPack.addPackage(pack.clone());
+            rootPack.removePackage(pack);
+        }
+        launcher.setSourceOutputDirectory("./../temp");
+        launcher.prettyprint();
+        
+        
         //look for all controllers
         for (CtElement ctElement : model.getElements(new ControllerFilter())) {
             //ControllerAnnotationFilter only matches instances of CtClass currently
@@ -91,7 +104,7 @@ public class Microservice {
             if (!endpoints.isEmpty())for (String uri : endpoints){
                 System.out.println("\t\tEndpoint: " + uri);
                 neo.addEndpointFromController(uri, name, ctClass.getSimpleName());
-            } 
+            }
         }
 
         //look for all clients

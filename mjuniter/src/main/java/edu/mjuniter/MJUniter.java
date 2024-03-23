@@ -3,6 +3,7 @@ package edu.mjuniter;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.io.File;
 import java.io.InputStream;
 import java.util.Properties;
 
@@ -53,7 +54,21 @@ public class MJUniter {
         UnitedSystem unitedSystem = new UnitedSystem(services, path);
         unitedSystem.build();
 
-        //close the neo4j connection
-        neo.close();
+        
+        neo.close(); //close the neo4j connection
+        for (File file : new File("./../temp").listFiles()) 
+            deleteDirectory(file);
+    }
+
+
+
+    static void deleteDirectory(File dir){
+        File[] files = dir.listFiles();
+        if (files != null){
+            for (File file : files){
+                deleteDirectory(file);
+            }
+        }
+        dir.delete();
     }
 }
